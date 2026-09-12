@@ -1,0 +1,28 @@
+name: Sign Shortcut on macOS
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  sign:
+    runs-on: macos-15
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Sign with Apple Shortcuts
+        run: |
+          set -euo pipefail
+          shortcuts sign --mode anyone --input input/Baixar.shortcut --output Baixar.shortcut
+          test -s Baixar.shortcut
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('Baixar.shortcut')
+          d=p.read_bytes()
+          assert d[:4] == b'AEA1', d[:4]
+          print('AEA1 OK', len(d))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Baixar-signed
+          path: Baixar.shortcut
+          retention-days: 1
