@@ -1,0 +1,29 @@
+name: Package CarPlay Shortcut
+on:
+  push:
+    branches:
+      - carplay-sign-20260920-v1
+permissions:
+  contents: read
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate artifact exists
+        run: |
+          set -euo pipefail
+          test -s output/Gerenciamento-Rede-Bateria-CarPlay-IMPORTAVEL.shortcut
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('output/Gerenciamento-Rede-Bateria-CarPlay-IMPORTAVEL.shortcut')
+          d=p.read_bytes()
+          assert d[:4] == b'AEA1', d[:4]
+          print('AEA1 OK', len(d))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CarPlay-importable
+          path: output/Gerenciamento-Rede-Bateria-CarPlay-IMPORTAVEL.shortcut
+          retention-days: 1
