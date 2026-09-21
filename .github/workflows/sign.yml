@@ -1,5 +1,8 @@
 name: Sign Shortcut on macOS
 on:
+  push:
+    branches:
+      - carplay-sign-20260920-v1
   workflow_dispatch:
 permissions:
   contents: read
@@ -23,6 +26,6 @@ jobs:
           PY
       - uses: actions/upload-artifact@v4
         with:
-          name: Baixar-signed
+          name: CarPlay-signed
           path: Baixar.shortcut
           retention-days: 1
