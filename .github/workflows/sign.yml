@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
     paths:
-      - "input/Baixar-1-6-5.shortcut.b64"
+      - "input/Baixar-1-6-5.shortcut.gz.b64"
 
 permissions:
   contents: read
@@ -26,9 +26,13 @@ jobs:
           set -euo pipefail
           python3 - <<'PY'
           import base64
+          import gzip
           from pathlib import Path
-          source = Path("input/Baixar-1-6-5.shortcut.b64")
-          raw = base64.b64decode(source.read_text().strip(), validate=False)
+          source = Path("input/Baixar-1-6-5.shortcut.gz.b64")
+          compressed = base64.b64decode(source.read_text().strip(), validate=True)
+          if len(compressed) > 2_000_000:
+              raise SystemExit("Compressed shortcut too large")
+          raw = gzip.decompress(compressed)
           if not (256 <= len(raw) <= 2_000_000):
               raise SystemExit("Unsigned shortcut outside expected size range")
           if raw.startswith(b"AEA1"):
