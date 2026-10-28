@@ -1,28 +1,57 @@
-name: Sign Shortcut on macOS
+name: Sign Baixar Shortcut (public, one-shot)
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "input/Baixar-1-6-5.shortcut.b64"
+
 permissions:
   contents: read
+
+concurrency:
+  group: baixar-sign-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   sign:
     runs-on: macos-15
-    timeout-minutes: 10
+    timeout-minutes: 8
     steps:
-      - uses: actions/checkout@v4
-      - name: Sign with Apple Shortcuts
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Decode precompiled shortcut without credentials
+        shell: bash
         run: |
           set -euo pipefail
-          shortcuts sign --mode anyone --input input/Baixar.shortcut --output Baixar.shortcut
+          python3 - <<'PY'
+          import base64
+          from pathlib import Path
+          source = Path("input/Baixar-1-6-5.shortcut.b64")
+          raw = base64.b64decode(source.read_text().strip(), validate=False)
+          if not (256 <= len(raw) <= 2_000_000):
+              raise SystemExit("Unsigned shortcut outside expected size range")
+          if raw.startswith(b"AEA1"):
+              raise SystemExit("Already signed; refuse redundant signing")
+          Path("Baixar-unsigned.shortcut").write_bytes(raw)
+          print("Unsigned shortcut ready; bytes:", len(raw))
+          PY
+      - name: Sign with native Apple Shortcuts
+        shell: bash
+        run: |
+          set -euo pipefail
+          shortcuts sign --mode anyone --input Baixar-unsigned.shortcut --output Baixar.shortcut
           test -s Baixar.shortcut
           python3 - <<'PY'
           from pathlib import Path
-          p=Path('Baixar.shortcut')
-          d=p.read_bytes()
-          assert d[:4] == b'AEA1', d[:4]
-          print('AEA1 OK', len(d))
+          data = Path("Baixar.shortcut").read_bytes()
+          assert data[:4] == b"AEA1", "Invalid AEA1 signature"
+          print("Apple signed shortcut verified:", len(data), "bytes")
           PY
-      - uses: actions/upload-artifact@v4
+      - name: Publish signed shortcut as ephemeral artifact
+        uses: actions/upload-artifact@v4
         with:
-          name: Baixar-signed
+          name: Baixar-1-6-5-signed
           path: Baixar.shortcut
+          if-no-files-found: error
           retention-days: 1
